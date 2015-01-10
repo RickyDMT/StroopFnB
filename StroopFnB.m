@@ -1,61 +1,54 @@
 function StroopFnB(varargin)
 
-global KEY COLORS w wRect XCENTER YCENTER PICS STIM DPT trial pahandle
-
-prompt={'SUBJECT ID' 'Condition' 'Session (1, 2, or 3)' 'Practice? 0 or 1'};
-defAns={'4444' '1' '1' '0'};
+prompt={'SUBJECT ID'};
+defAns={'4444'};
 
 answer=inputdlg(prompt,'Please input subject info',1,defAns);
 
 ID=str2double(answer{1});
-COND = str2double(answer{2});
-SESS = str2double(answer{3});
-prac = str2double(answer{4});
+% COND = str2double(answer{2});
+% SESS = str2double(answer{3});
+% prac = str2double(answer{4});
 
 
 rng(ID); %Seed random number generator with subject ID
 d = clock;
 
+
+KbName('UnifyKeyNames');
+  
 KEY = struct;
 KEY.rt = KbName('SPACE');
-KEY.left = KbName('c');
-KEY.right = KbName('m');
-
 
 COLORS = struct;
-COLORS.BLACK = [0 0 0];
 COLORS.WHITE = [255 255 255];
 COLORS.RED = [255 0 0];
 COLORS.BLUE = [0 0 255];
 COLORS.GREEN = [0 255 0];
-COLORS.YELLOW = [255 255 0];
 wcolor = [COLORS.WHITE; COLORS.RED; COLORS.BLUE; COLORS.GREEN];
 
 STIM = struct;
-STIM.blocks = 6;
-STIM.trials = 20;
-STIM.totes = STIM.blocks*STIM.trials;
-STIM.trialdur = 1.250;
+STIM.rows = 10;
+STIM.cols = 10;
+STIM.totes = STIM.rows*STIM.cols;
 
+commandwindow
 %% Word
-% SFB.text(1:12,3) = {'FOOD';
-%                     'DINNER';
-%                     'BAKER';
-%                     'SUGAR';
-%                     'MEAL';
-%                     'BUTTER';
-%                     'CREAM';
-%                     'TOAST';
-%                     'PICNIC';
-%                     'POTATO';
-%                     'CAKE';
-%                     'SANDWICH'};
 
 try
     load('stim_text.mat')
 catch
     error('Cannot load stim_text file. Please be sure stim_text.mat is saved in the same directory as StroopFnB.m (this task''s file).')
 end
+
+%Choose condition, word list, & color list;
+cond = CoinFlip(1,.5) + 1;  %1 = exp, 2 = control.
+word_cond = randi(4);
+color_cond = randi(4);
+wordlist = stim_text{word_cond,cond};
+colorlist =stim_text{color_cond,3};
+
+
 
 %%
 %change this to 0 to fill whole screen
@@ -99,43 +92,50 @@ Screen('TextFont', w, 'Arial');
 %Screen('TextStyle', w, 1);
 Screen('TextSize',w,25);
 
-KbName('UnifyKeyNames');
-
-%%
-
-%randomize word order across 8 columns
-trial_word_order = [randperm(length(stim_text))' randperm(length(stim_text))' randperm(length(stim_text))' randperm(length(stim_text))' randperm(length(stim_text))' randperm(length(stim_text))' randperm(length(stim_text))' randperm(length(stim_text))' randperm(length(stim_text))'];
-[m,n] = size(trial_word_order);
-
-%randomize word color
-rando_color = randi(4,m*n,1);
-rando_color = reshape(rando_color,m,n);
-
+%% 
 %figure out distance between words on present screen
-vert_loc = fix(wRect(4)/m);
-horz_loc = fix(wRect(3)/n);
+vert_loc = fix(wRect(4)/STIM.rows);
+horz_loc = fix(wRect(3)/STIM.cols);
 
 %produce equal intervals for word placement across vertical and horizontal
 %dimensions.
-wloc_vert = 35:vert_loc:vert_loc*m;
-wloc_horz = 35:horz_loc:horz_loc*n;
+wloc_vert = 35:vert_loc:vert_loc*STIM.rows;
+wloc_horz = 40:horz_loc:horz_loc*STIM.cols;
 
-for x = 1:n;
-    for y = 1:m;
-        dat_word = stim_text{trial_word_order(y,x),3};
-        CenterTextOnPoint(w,dat_word,wloc_horz(x),wloc_vert(y),wcolor(rando_color(y,x),:));
+for x = 1:STIM.cols;
+    for y = 1:STIM.rows;
+        wcounter = (x-1)*STIM.rows + y;
+        dat_word = wordlist{wcounter};
+        CenterTextOnPoint(w,dat_word,wloc_horz(x),wloc_vert(y),wcolor(colorlist(wcounter),:));
     end
 end
 
-Screen('Flip',w);
+rt_start = Screen('Flip',w); 
+
+FlushEvents();
+
+keypress = 0;
+
+while 1
+    [down, ~, code] = KbCheck();
+    
+    if down ==1 && any(find(code) == KEY.rt);
+%         keypress = keypress + 1;
+%         if keypress == 2;
+            rt = GetSecs() - rt_start;
+            break
+%         end
+    end
+end
 
 
+sca
     
 
 
 
 end
-
+ 
 %%
 function [nx, ny, textbounds] = CenterTextOnPoint(win, tstring, sx, sy,color)
 % [nx, ny, textbounds] = DrawFormattedText(win, tstring [, sx][, sy][, color][, wrapat][, flipHorizontal][, flipVertical][, vSpacing][, righttoleft])
